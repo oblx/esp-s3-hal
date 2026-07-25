@@ -1,0 +1,8 @@
+[build]
+target = "xtensa-esp32s3-none-elf"
+
+[target.xtensa-esp32s3-none-elf]
+runner = "espflash --chip esp32s3 monitor --baud 2000000"
+rustflags = [
+	"-C", "link-arg=-Tlinkall.x",
+]

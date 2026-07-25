@@ -1,0 +1,15 @@
+/target
+*.bin
+*.elf
+*.o
+*.a
+.env
+.env.local
+*.bak
+*.bak2
+*.bakp
+*.bak_mb
+
+# Keep Cargo.lock for binary crates
+!Cargo.lock
+.ci-secrets/

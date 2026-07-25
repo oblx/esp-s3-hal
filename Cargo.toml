@@ -1,0 +1,45 @@
+[package]
+name = "esp_s3_hal"
+version = "0.1.0"
+edition = "2021"
+description = "Reusable Rust HAL for ESP32-S3: WS2812 LED, Wi-Fi, HTTP building blocks"
+license = "MIT OR Apache-2.0"
+authors = ["Oblx <code@oblx.dev>"]
+repository = "https://github.com/oblx/esp-s3-hal"
+
+[dependencies]
+esp-hal = { version = "1.1.1", features = ["esp32s3", "unstable", "rt"] }
+esp32s3 = "0.35.2"
+ws2812-rmt = { version = "0.2.0", features = ["esp32s3"] }
+esp-alloc = { version = "0.10.0" }
+esp-println = { version = "0.16.0", default-features = false, features = ["esp32s3", "uart"] }
+esp-backtrace = { version = "0.18.0", features = ["esp32s3", "panic-handler", "println"] }
+esp-bootloader-esp-idf = { version = "0.5.0", features = ["esp32s3"] }
+embassy-sync = { version = "0.8.0" }
+miniserde = { version = "0.1.46", default-features = false }
+static_cell = { version = "2.1.1", features = ["nightly"] }
+
+# WiFi deps — optional, enabled by wifi-ap / wifi-sta features
+esp-rtos = { version = "0.3.0", features = ["esp32s3", "embassy", "esp-radio", "esp-alloc"], optional = true }
+esp-radio = { version = "1.0.0-beta.0", default-features = false, features = ["esp32s3", "wifi", "unstable"], optional = true }
+embassy-net = { version = "0.9.0", features = ["tcp", "udp", "dhcpv4", "medium-ethernet", "proto-ipv4"], optional = true }
+embassy-executor = { version = "0.10", optional = true }
+embassy-time = { version = "0.5", optional = true }
+picoserve = { version = "0.19.0", features = ["embassy", "alloc"], optional = true }
+esp-hal-dhcp-server = { version = "0.4.0", optional = true }
+
+[features]
+default = ["wifi-ap"]
+wifi-ap = ["dep:esp-rtos", "dep:esp-radio", "dep:embassy-net", "dep:embassy-executor", "dep:embassy-time", "dep:esp-hal-dhcp-server", "dep:picoserve"]
+wifi-sta = ["dep:esp-rtos", "dep:esp-radio", "dep:embassy-net", "dep:embassy-executor", "dep:embassy-time", "dep:picoserve"]
+
+[profile.dev]
+overflow-checks = true
+debug = true
+
+[profile.release]
+strip = true
+lto = false
+opt-level = 2
+codegen-units = 1
+panic = "abort"
