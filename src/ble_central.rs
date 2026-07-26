@@ -182,8 +182,10 @@ impl EventHandler for ScanCollector {
 
 type Ctl = ExternalController<BleConnector<'static>, 20>;
 
-/// Run the BLE central task. Spawn this as an embassy task.
-/// The future is boxed to avoid stack overflow on the main executor.
+/// Run the BLE central task. Spawn this on the main executor (CPU0).
+/// The future is boxed to keep the state machine on the heap.
+/// Requires the main stack to be large enough for HCI event polling
+/// (~30KB+); use `#[ram(reclaimed)]` for the heap to maximize stack.
 #[embassy_executor::task(pool_size = 1)]
 pub async fn ble_central_task(
 	connector: BleConnector<'static>,
