@@ -19,6 +19,7 @@ python3 scripts/monitor.py
 | adc | `hal::adc` (ADC1 only — ADC2 conflicts with Wi-Fi) |
 | i2c | `hal::i2c` — async with 500ms timeout (blocking hangs no-device reads) |
 | ble | `ble` — HCI connector, `coex` feature enabled on esp-radio |
+| ble central | `ble_central` — trouble-host 0.6 (bt-hci 0.8), central role, boxed future |
 | wifi ctrl | `mem::forget(ctrl)` — Drop deinitializes radio, kills DHCP |
 | no env consts | all public functions take parameters (decoupled from app config) |
 | layout | folder = domain · docs named by domain · no numbered dump folders |

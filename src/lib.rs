@@ -8,6 +8,8 @@ pub mod hal;
 
 #[cfg(any(feature = "wifi-ap", feature = "wifi-sta"))]
 pub mod ble;
+#[cfg(any(feature = "wifi-ap", feature = "wifi-sta"))]
+pub mod ble_central;
 
 #[cfg(any(feature = "wifi-ap", feature = "wifi-sta"))]
 pub mod net;
