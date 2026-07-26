@@ -3,7 +3,7 @@ name = "esp_s3_hal"
 version = "0.1.0"
 edition = "2021"
 description = "Reusable Rust HAL for ESP32-S3: WS2812 LED, Wi-Fi, HTTP building blocks"
-license = "MIT OR Apache-2.0"
+license = "MIT"
 authors = ["Oblx <code@oblx.dev>"]
 repository = "https://github.com/oblx/esp-s3-hal"
 
