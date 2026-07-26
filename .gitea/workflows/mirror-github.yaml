@@ -1,5 +1,5 @@
 # mirror main → public GitHub via deploy key · .gitea stripped (not synced)
-# secrets: GH_DEPLOY_KEY (base64 ed25519 private) · vars: ESP_S3_HAL_GH_* · GH_SSH_HOST
+# secrets: ESP_S3_HAL_GH_DEPLOY_KEY (base64 ed25519 private) · vars: ESP_S3_HAL_GH_* · GH_SSH_HOST
 name: mirror-github
 on:
   push:
@@ -30,7 +30,7 @@ jobs:
           GH_SSH_HOST: ${{ vars.GH_SSH_HOST }}
           GH_REPO: ${{ vars.ESP_S3_HAL_GH_REPO }}
           GH_BRANCH: ${{ vars.ESP_S3_HAL_GH_BRANCH }}
-          GH_KEY_B64: ${{ secrets.GH_DEPLOY_KEY }}
+          GH_KEY_B64: ${{ secrets.ESP_S3_HAL_GH_DEPLOY_KEY }}
         run: |
           set -euo pipefail
           : "${GH_SSH_HOST:?}" "${GH_REPO:?}" "${GH_BRANCH:?}" "${GH_KEY_B64:?}"
