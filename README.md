@@ -1,6 +1,6 @@
 # esp-s3-hal
 ESP32-S3-WROOM-1 · Reusable Rust `no_std` HAL: WS2812 LED, GPIO, PWM, ADC, I2C, BLE, Wi-Fi (AP/STA), HTTP building blocks.
-**MIT**
+**WTFPL-2.0**
 ## Tree
 ```
 src/
