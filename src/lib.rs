@@ -6,9 +6,9 @@ extern crate alloc;
 pub mod boot;
 pub mod hal;
 
-#[cfg(any(feature = "wifi-ap", feature = "wifi-sta"))]
+#[cfg(feature = "ble")]
 pub mod ble;
-#[cfg(any(feature = "wifi-ap", feature = "wifi-sta"))]
+#[cfg(feature = "ble")]
 pub mod ble_central;
 
 #[cfg(any(feature = "wifi-ap", feature = "wifi-sta"))]

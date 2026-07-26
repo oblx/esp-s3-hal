@@ -21,5 +21,5 @@ pub fn init() -> Result<BleConnector<'static>, BleInitError> {
 
 /// Check if BLE feature is compiled in.
 pub fn is_enabled() -> bool {
-	true
+	cfg!(feature = "ble")
 }

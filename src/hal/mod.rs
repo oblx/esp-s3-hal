@@ -3,4 +3,5 @@ pub mod audio;
 pub mod gpio;
 pub mod i2c;
 pub mod led;
+pub mod micromodel;
 pub mod pwm;

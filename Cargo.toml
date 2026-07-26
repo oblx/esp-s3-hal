@@ -20,22 +20,25 @@ embassy-sync = { version = "0.8.0" }
 miniserde = { version = "0.1.46", default-features = false }
 static_cell = { version = "2.1.1", features = ["nightly"] }
 
-# WiFi + BLE deps — optional, enabled by wifi-ap / wifi-sta features
+# WiFi + BLE deps — optional, enabled by wifi-ap / wifi-sta / ble features
 esp-rtos = { version = "0.3.0", features = ["esp32s3", "embassy", "esp-radio", "esp-alloc"], optional = true }
-esp-radio = { version = "1.0.0-beta.0", default-features = false, features = ["esp32s3", "wifi", "ble", "coex", "unstable"], optional = true }
+esp-radio = { version = "1.0.0-beta.0", default-features = false, features = ["esp32s3", "wifi", "unstable"], optional = true }
 embassy-net = { version = "0.9.0", features = ["tcp", "udp", "dhcpv4", "medium-ethernet", "proto-ipv4"], optional = true }
 embassy-executor = { version = "0.10", optional = true }
 embassy-time = { version = "0.5", optional = true }
 picoserve = { version = "0.19.0", features = ["embassy", "alloc"], optional = true }
 esp-hal-dhcp-server = { version = "0.4.0", optional = true }
-trouble-host = { version = "0.6.0", features = ["central", "default-packet-pool-mtu-255", "scan"] }
+trouble-host = { version = "0.6.0", features = ["central", "default-packet-pool-mtu-255", "scan"], optional = true }
 embassy-futures = "0.1.2"
 heapless = "0.9.3"
+libm = "0.2.11"
 
 [features]
 default = ["wifi-ap"]
 wifi-ap = ["dep:esp-rtos", "dep:esp-radio", "dep:embassy-net", "dep:embassy-executor", "dep:embassy-time", "dep:esp-hal-dhcp-server", "dep:picoserve"]
 wifi-sta = ["dep:esp-rtos", "dep:esp-radio", "dep:embassy-net", "dep:embassy-executor", "dep:embassy-time", "dep:picoserve"]
+ble = ["dep:trouble-host", "esp-radio/ble", "esp-radio/coex"]
+psram = ["esp-hal/psram"]
 
 [profile.dev]
 overflow-checks = true
