@@ -27,3 +27,15 @@ Requires `dhcpv4-hostname` feature on `embassy-net` (enabled in both HAL and fir
 ## Invariant
 `mem::forget(ctrl)` — `WifiController::drop` deinitializes the radio.
 Must forget after `connect_async()` or DHCP never completes.
+## CORS (http module)
+`esp_s3_hal::http` provides CORS wrappers for picoserve responses:
+- `CorsResponse<T>` — wraps any `Content` with `Access-Control-Allow-*` headers
+- `CorsPreflight` — empty 204 response for OPTIONS preflight
+Gated behind `wifi-ap` or `wifi-sta` feature. Enables client-direct browser access
+(dashboard → device HTTP API without server proxy).
+```rust
+use esp_s3_hal::http::CorsResponse;
+async fn handler() -> CorsResponse<String> {
+    CorsResponse(json_string)
+}
+```

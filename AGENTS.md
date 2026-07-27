@@ -22,6 +22,7 @@ python3 scripts/monitor.py
 | ble central | `ble_central` — trouble-host 0.6 (bt-hci 0.8), central role, boxed future |
 | micromodel | `hal::micromodel` — PLE1 parser + int4 inference engine (imports PLE1_MAGIC from flash_collection) |
 | flash collection | `hal::flash_collection` — MODL manifest parser, ROM SPI flash read, owns PLE1_MAGIC + MODL_MAGIC |
+| http | `http` module — `CorsResponse<T>` wraps picoserve responses with CORS headers · `CorsPreflight` for OPTIONS · gated `wifi-ap` or `wifi-sta` |
 | wifi ctrl | `mem::forget(ctrl)` — Drop deinitializes radio, kills DHCP |
 | hostname | `init_sta(ssid, pass, hostname)` → DhcpConfig.hostname (DHCP Option 12) · `dhcpv4-hostname` feature |
 | no env consts | all public functions take parameters (decoupled from app config) |
