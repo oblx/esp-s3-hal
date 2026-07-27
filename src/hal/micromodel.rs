@@ -16,6 +16,8 @@ use alloc::vec::Vec;
 use esp_println::println;
 use libm::{sqrtf, powf, cosf, sinf, expf, tanhf};
 
+use super::flash_collection::PLE1_MAGIC;
+
 fn fp16_to_f32(h: u16) -> f32 {
 	if h == 0 { return 0.0; }
 	let sign = if (h >> 15) & 1 != 0 { -1.0 } else { 1.0 };
@@ -27,8 +29,6 @@ fn fp16_to_f32(h: u16) -> f32 {
 		_ => sign * (1.0 + frac) * powf(2.0, (exp - 15) as f32),
 	}
 }
-
-const MAGIC: u32 = 0x504C4531;
 
 /// Parsed PLE1 model configuration.
 #[derive(Clone, Copy, Debug)]
@@ -96,7 +96,7 @@ fn rd_i32(buf: &[u8], off: usize) -> i32 {
 pub fn load(blob: Vec<u8>) -> Result<Model, &'static str> {
 	if blob.len() < 40 { return Err("blob too small"); }
 	let magic = u32::from_le_bytes([blob[0], blob[1], blob[2], blob[3]]);
-	if magic != MAGIC { return Err("bad magic"); }
+	if magic != PLE1_MAGIC { return Err("bad magic"); }
 	let cfg = ModelConfig {
 		vocab_size: rd_i32(&blob, 4) as usize,
 		d_model: rd_i32(&blob, 8) as usize,
