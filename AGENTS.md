@@ -21,7 +21,7 @@ python3 scripts/monitor.py
 | ble | `ble` — HCI connector, `coex` feature enabled on esp-radio (optional feature) |
 | ble central | `ble_central` — trouble-host 0.6 (bt-hci 0.8), central role, boxed future |
 | micromodel | `hal::micromodel` — PLE1 parser + int4 inference engine (libm math, PSRAM-resident) |
-| flash collection | `hal::flash_collection` — multi-model manifest parser, ROM SPI flash read (planned) |
+| flash collection | `hal::flash_collection` — MODL manifest parser, ROM SPI flash read, `read_manifest` + `read_model` |
 | wifi ctrl | `mem::forget(ctrl)` — Drop deinitializes radio, kills DHCP |
 | no env consts | all public functions take parameters (decoupled from app config) |
 | layout | folder = domain · docs named by domain · no numbered dump folders |

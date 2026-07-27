@@ -38,7 +38,6 @@ default = ["wifi-ap"]
 wifi-ap = ["dep:esp-rtos", "dep:esp-radio", "dep:embassy-net", "dep:embassy-executor", "dep:embassy-time", "dep:esp-hal-dhcp-server", "dep:picoserve"]
 wifi-sta = ["dep:esp-rtos", "dep:esp-radio", "dep:embassy-net", "dep:embassy-executor", "dep:embassy-time", "dep:picoserve"]
 ble = ["dep:trouble-host", "esp-radio/ble", "esp-radio/coex"]
-psram = ["esp-hal/psram"]
 
 [profile.dev]
 overflow-checks = true
