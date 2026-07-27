@@ -62,7 +62,7 @@ async fn main(spawner: Spawner) -> ! {
 	let sw_int = SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
 	esp_rtos::start(timg0.timer0, sw_int.software_interrupt0);
 
-	let (dev, cfg, mut ctrl) = net::init_sta(STA_SSID, STA_PASS);
+	let (dev, cfg, mut ctrl) = net::init_sta(STA_SSID, STA_PASS, "esp32-s3");
 	let (stack, runner) = embassy_net::new(
 		dev, cfg, STACK_RES.init(StackResources::<3>::new()), 0x1234_5678_9abc_def0,
 	);

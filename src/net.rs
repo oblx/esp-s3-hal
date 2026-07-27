@@ -54,6 +54,7 @@ pub fn init_ap(
 pub fn init_sta(
 	ssid: &str,
 	pass: &str,
+	hostname: &str,
 ) -> (WifiDevice, Config, esp_radio::wifi::WifiController<'static>) {
 	let sta_config = StationConfig::default()
 		.with_ssid(ssid)
@@ -63,9 +64,11 @@ pub fn init_sta(
 	let ctrl = esp_radio::wifi::WifiController::new(
 		unsafe { esp_hal::peripherals::WIFI::steal() }, ctrl_cfg,
 	).unwrap();
-	println!("Wi-Fi STA init: SSID={}", ssid);
+	println!("Wi-Fi STA init: SSID={} hostname={}", ssid, hostname);
 	let dev = Interface::station();
-	let cfg = Config::dhcpv4(embassy_net::DhcpConfig::default());
+	let mut dhcp = embassy_net::DhcpConfig::default();
+	dhcp.hostname = heapless::String::try_from(hostname).ok();
+	let cfg = Config::dhcpv4(dhcp);
 	(dev, cfg, ctrl)
 }
 

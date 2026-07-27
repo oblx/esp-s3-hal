@@ -11,12 +11,14 @@ spawner.spawn(net::dhcp_task(stack).unwrap());
 ```
 ## STA mode
 ```rust
-let (dev, cfg, mut ctrl) = net::init_sta("ssid", "password");
+let (dev, cfg, mut ctrl) = net::init_sta("ssid", "password", "satellite-001");
 let (stack, runner) = embassy_net::new(dev, cfg, resources, seed);
 spawner.spawn(net::net_task(runner).unwrap());
 ctrl.connect_async().await.expect("connect");
 core::mem::forget(ctrl);  // Drop kills radio
 ```
+Hostname sent via DHCP Option 12 — router registers `satellite-001` automatically.
+Requires `dhcpv4-hostname` feature on `embassy-net` (enabled in both HAL and firmware Cargo.toml).
 ## Tasks
 | task | role |
 |-|-|

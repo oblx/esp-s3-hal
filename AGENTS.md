@@ -23,6 +23,7 @@ python3 scripts/monitor.py
 | micromodel | `hal::micromodel` — PLE1 parser + int4 inference engine (imports PLE1_MAGIC from flash_collection) |
 | flash collection | `hal::flash_collection` — MODL manifest parser, ROM SPI flash read, owns PLE1_MAGIC + MODL_MAGIC |
 | wifi ctrl | `mem::forget(ctrl)` — Drop deinitializes radio, kills DHCP |
+| hostname | `init_sta(ssid, pass, hostname)` → DhcpConfig.hostname (DHCP Option 12) · `dhcpv4-hostname` feature |
 | no env consts | all public functions take parameters (decoupled from app config) |
 | layout | folder = domain · docs named by domain · no numbered dump folders |
 | deps | crates.io allowed (esp-hal ecosystem) |
