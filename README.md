@@ -52,7 +52,7 @@ espflash flash --min-chip-rev 0.0 target/xtensa-esp32s3-none-elf/release/example
 | `ble` | `init()` · `is_enabled()` | BLE HCI connector (coex with Wi-Fi) |
 | `net` | `init_ap(…)` · `init_sta(…)` | Wi-Fi AP/STA init (parameterized) |
 | `net` | `net_task` · `dhcp_task` | embassy tasks for net stack |
-| `http` | `LedMutex` | shared LED state mutex type |
+| `http` | `LedMutex` · `CorsResponse<T>` · `CorsPreflight` | shared LED state mutex + CORS types for client-direct browser access |
 ## Facts
 - Target: `xtensa-esp32s3-none-elf` · build-std `core,compiler_builtins,alloc`
 - LED driver: `ws2812-rmt` 0.2.0 (not `esp-hal-smartled2` — timing bug)

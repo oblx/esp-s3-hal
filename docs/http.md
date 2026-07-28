@@ -1,5 +1,5 @@
 # HTTP
-The SDK provides shared types for HTTP + LED state. The app crate owns routes, handlers, and the web task.
+The SDK provides shared types for HTTP + LED state + CORS. The app crate owns routes, handlers, and the web task.
 ## LedMutex
 ```rust
 use esp_s3_hal::http::LedMutex;
@@ -9,6 +9,10 @@ static LED: StaticCell<LedMutex> = StaticCell::new();
 let led = LED.init(LedMutex::new(LedState::default()));
 ```
 `LedMutex = Mutex<CriticalSectionRawMutex, LedState>`
+## CORS types
+`CorsResponse<T>` — wrapper that adds `Access-Control-Allow-Origin: *` + methods + headers headers to any picoserve response. Usage: `async fn handler() -> CorsResponse<String> { CorsResponse(json) }`
+`CorsPreflight` — empty 204 response with CORS headers for OPTIONS preflight. Usage: `.options(cors_preflight)` where `async fn cors_preflight() -> CorsPreflight { CorsPreflight }`
+Both gated behind `wifi-ap` or `wifi-sta` feature.
 ## Usage pattern
 The app crate defines `AppState`, `AppProps`, routes, and `web_task`:
 ```rust
