@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   validate:
-    runs-on: ${{ vars.RUNNER_T1 }}
+    runs-on: pochtli
     timeout-minutes: 15
     steps:
       - name: checkout
@@ -35,7 +35,7 @@ jobs:
           test -d examples
   kiosk-health:
     needs: [validate]
-    runs-on: ${{ vars.RUNNER_T1 }}
+    runs-on: pochtli
     timeout-minutes: 5
     steps:
       - name: remote-kiosk
@@ -50,7 +50,7 @@ jobs:
           echo "kiosk-health-remote ok"
   kiosk-e2e:
     needs: [validate]
-    runs-on: ${{ vars.RUNNER_T4 }}
+    runs-on: mjolnir
     timeout-minutes: 5
     steps:
       - name: local-kiosk

@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   mirror:
-    runs-on: ${{ vars.RUNNER_T1 }}
+    runs-on: pochtli
     timeout-minutes: 10
     steps:
       - name: checkout
