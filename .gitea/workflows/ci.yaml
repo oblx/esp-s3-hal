@@ -1,61 +1,248 @@
-# validate on main · zero hardcode · fail-closed
-# standards: https://git.iot/Infra/Docs/raw/branch/main/01-network/ci-cd/standards.md
-name: ci
+# @date #20260917 @author Oblx <code@oblx.dev>
+# @desc mimir CI — thin caller; harness scripts are FETCHED from Infra/Data at runtime (no local copies).
+# Doctrine: docs/03-ops/ci-blueprints.md · Harness: Infra/Data seed/ci-cd/entity-ci
+# Trigger: tag ship/mimir-* · ship/mimir-content-* (content-only: skip build, run #deploy.content_steps) · provision/mimir-* (privileged setup) · retire/mimir-* (teardown) · Manual: workflow_dispatch
+name: mimir Deploy
 on:
   push:
-    branches: [main]
-  pull_request:
+    tags: ['ship/mimir-*', 'ship/mimir-content-*', 'provision/mimir-*', 'retire/mimir-*']
   workflow_dispatch:
+permissions:
+  contents: write
 concurrency:
-  group: ${{ gitea.workflow }}-${{ gitea.ref }}
+  group: mimir-deploy-${{ gitea.ref }}
   cancel-in-progress: true
+# common, non-secret env — declared once; credentials resolve per-job from the
+# runner-local toci files (first step of every job), never from gitea secrets
+env:
+  ENTITY: mimir
+  NODE_EXTRA_CA_CERTS: ${{ vars.CA_BUNDLE }}
+  CA_BUNDLE: ${{ vars.CA_BUNDLE }}
+  HARNESS_BASE: https://${{ vars.GIT_SERVER_HOST }}/api/v1/repos/${{ vars.SHARED_REPO }}/raw/seed/ci-cd/entity-ci/scripts
+  GIT_SERVER_HOST: ${{ vars.GIT_SERVER_HOST }}
+  GITEA_TOKEN: ${{ gitea.token }}
+  GITEA_REPO: ${{ gitea.repository }}
+  GITEA_SHA: ${{ gitea.sha }}
+  GITEA_REF_NAME: ${{ gitea.ref_name }}
+
 jobs:
   validate:
-    runs-on: pochtli
-    timeout-minutes: 15
+    runs-on: ${{ vars.RUNNER_01_T1 }}
+    timeout-minutes: 5
     steps:
-      - name: checkout
-        env:
-          GITEA_TOKEN: ${{ gitea.token }}
-          GITEA_REPO: ${{ gitea.repository }}
-          GITEA_SHA: ${{ gitea.sha }}
+      - name: resolve runner credentials (toci-provisioned /etc/toci-ci, seeded $HOME/.toci-ci)
         run: |
           set -euo pipefail
-          : "${GITEA_TOKEN:?}" "${GITEA_REPO:?}" "${GITEA_SHA:?}"
-          git init
-          git remote add origin "https://git.iot/${GITEA_REPO}.git"
-          git -c http.extraHeader="AUTHORIZATION: token ${GITEA_TOKEN}" fetch --depth 1 origin "${GITEA_SHA}"
-          git checkout --force FETCH_HEAD
-      - name: tree-gate
-        run: |
-          set -euo pipefail
-          test -f README.md
-          test -d docs
-          test -d src/hal
-          test -d src/boot
-          test -f docs/architecture.md
-          test -f docs/hal.md
-          test -f docs/net.md
-          test -f docs/http.md
-          test -f docs/boot.md
-          test -f docs/flash.md
-          test -f docs/examples.md
-          test -f docs/ci.md
-      - name: hardcode-gate
-        run: |
-          set -euo pipefail
-          fail=0
-          for n in github.com gaston sleipnir pochtl mjolnir quetzal 192.168. 10.; do
-            if grep -RnF --exclude='ci.yaml' -- "$n" .gitea/workflows >/dev/null 2>&1; then
-              echo "hardcode '$n' in .gitea/workflows"
-              fail=1
-            fi
+          : "${GITHUB_ENV:?GITHUB_ENV required}"
+          D=/etc/toci-ci; [ -r "$D/shared_token" ] || D="$HOME/.toci-ci"
+          for pair in toci_token:TOCI_TOKEN shared_token:SHARED_TOKEN tlaloc_token:TLALOC_TOKEN tlaloc_admin_token:TLALOC_ADMIN_TOKEN; do
+            f="${pair%%:*}"; k="${pair##*:}"
+            [ -r "$D/$f" ] && [ -s "$D/$f" ] || { echo "FAIL: $D/$f unreadable on $(hostname) — runner not provisioned/seeded" >&2; exit 1; }
+            grep -q "^${k}=" "$GITHUB_ENV" 2>/dev/null || printf '%s=%s\n' "$k" "$(cat "$D/$f")" >> "$GITHUB_ENV"
           done
-          exit "$fail"
-      - name: docs-gate
+          grep -q '^TOKEN=' "$GITHUB_ENV" 2>/dev/null || printf 'TOKEN=%s\n' "$(cat "$D/shared_token")" >> "$GITHUB_ENV"
+      - run: |
+          printf 'Authorization: token %s\n' "${TOKEN}" | curl -fsSL -H @- "${HARNESS_BASE}/bootstrap.sh?ref=main" | bash
+      - run: bash .ci/checkout.sh
+      - run: bash .ci/validate.sh
+
+  provision:
+    needs: validate
+    if: ${{ startsWith(gitea.ref, 'refs/tags/provision/') }}
+    runs-on: ${{ vars.RUNNER_01_T1 }}
+    timeout-minutes: 10
+    env:
+      TOCI_URL: ${{ vars.TOCI_URL }}
+      TLALOC_URL: ${{ vars.TLALOC_URL }}
+    steps:
+      - name: resolve runner credentials (toci-provisioned /etc/toci-ci, seeded $HOME/.toci-ci)
         run: |
           set -euo pipefail
-          while IFS= read -r f; do
-            n=$(wc -l <"$f")
-            test "$n" -le 100 || { echo "too long: $f ($n)"; exit 1; }
-          done < <(find docs -name '*.md' -print; printf '%s\n' README.md AGENTS.md)
+          : "${GITHUB_ENV:?GITHUB_ENV required}"
+          D=/etc/toci-ci; [ -r "$D/shared_token" ] || D="$HOME/.toci-ci"
+          for pair in toci_token:TOCI_TOKEN shared_token:SHARED_TOKEN tlaloc_token:TLALOC_TOKEN tlaloc_admin_token:TLALOC_ADMIN_TOKEN; do
+            f="${pair%%:*}"; k="${pair##*:}"
+            [ -r "$D/$f" ] && [ -s "$D/$f" ] || { echo "FAIL: $D/$f unreadable on $(hostname) — runner not provisioned/seeded" >&2; exit 1; }
+            grep -q "^${k}=" "$GITHUB_ENV" 2>/dev/null || printf '%s=%s\n' "$k" "$(cat "$D/$f")" >> "$GITHUB_ENV"
+          done
+          grep -q '^TOKEN=' "$GITHUB_ENV" 2>/dev/null || printf 'TOKEN=%s\n' "$(cat "$D/shared_token")" >> "$GITHUB_ENV"
+      - run: |
+          printf 'Authorization: token %s\n' "${TOKEN}" | curl -fsSL -H @- "${HARNESS_BASE}/bootstrap.sh?ref=main" | bash
+      - run: bash .ci/provision.sh
+
+  retire:
+    needs: validate
+    if: ${{ startsWith(gitea.ref, 'refs/tags/retire/') }}
+    runs-on: ${{ vars.RUNNER_01_T1 }}
+    timeout-minutes: 10
+    env:
+      TOCI_URL: ${{ vars.TOCI_URL }}
+      TLALOC_URL: ${{ vars.TLALOC_URL }}
+      RETIRE_DELETE: ${{ vars.RETIRE_DELETE }}
+    steps:
+      - name: resolve runner credentials (toci-provisioned /etc/toci-ci, seeded $HOME/.toci-ci)
+        run: |
+          set -euo pipefail
+          : "${GITHUB_ENV:?GITHUB_ENV required}"
+          D=/etc/toci-ci; [ -r "$D/shared_token" ] || D="$HOME/.toci-ci"
+          for pair in toci_token:TOCI_TOKEN shared_token:SHARED_TOKEN tlaloc_token:TLALOC_TOKEN tlaloc_admin_token:TLALOC_ADMIN_TOKEN; do
+            f="${pair%%:*}"; k="${pair##*:}"
+            [ -r "$D/$f" ] && [ -s "$D/$f" ] || { echo "FAIL: $D/$f unreadable on $(hostname) — runner not provisioned/seeded" >&2; exit 1; }
+            grep -q "^${k}=" "$GITHUB_ENV" 2>/dev/null || printf '%s=%s\n' "$k" "$(cat "$D/$f")" >> "$GITHUB_ENV"
+          done
+          grep -q '^TOKEN=' "$GITHUB_ENV" 2>/dev/null || printf 'TOKEN=%s\n' "$(cat "$D/shared_token")" >> "$GITHUB_ENV"
+      - run: |
+          printf 'Authorization: token %s\n' "${TOKEN}" | curl -fsSL -H @- "${HARNESS_BASE}/bootstrap.sh?ref=main" | bash
+      - run: bash .ci/provision.sh retire
+
+  build:
+    needs: validate
+    if: ${{ !startsWith(gitea.ref, 'refs/tags/provision/') && !startsWith(gitea.ref, 'refs/tags/retire/') && !contains(gitea.ref, '-content-') }}
+    runs-on: ${{ vars.RUNNER_02_T2 }}
+    timeout-minutes: 30
+    env:
+      SCRIPTS_DIR: .ci
+      SHARED_REPO: ${{ vars.SHARED_REPO }}
+      EMPIRE_SHARED_REPO: ${{ vars.EMPIRE_SHARED_REPO }}
+      WSHARED_REPO: ${{ vars.WSHARED_REPO }}
+      BUILD_DIR: build-out
+      HW_MIN_CORES: ${{ vars.HW_MIN_CORES }}
+      HW_MIN_RAM_GB: ${{ vars.HW_MIN_RAM_GB }}
+      HW_MIN_DISK_GB: ${{ vars.HW_MIN_DISK_GB }}
+    steps:
+      - name: resolve runner credentials (toci-provisioned /etc/toci-ci, seeded $HOME/.toci-ci)
+        run: |
+          set -euo pipefail
+          : "${GITHUB_ENV:?GITHUB_ENV required}"
+          D=/etc/toci-ci; [ -r "$D/shared_token" ] || D="$HOME/.toci-ci"
+          for pair in toci_token:TOCI_TOKEN shared_token:SHARED_TOKEN tlaloc_token:TLALOC_TOKEN tlaloc_admin_token:TLALOC_ADMIN_TOKEN; do
+            f="${pair%%:*}"; k="${pair##*:}"
+            [ -r "$D/$f" ] && [ -s "$D/$f" ] || { echo "FAIL: $D/$f unreadable on $(hostname) — runner not provisioned/seeded" >&2; exit 1; }
+            grep -q "^${k}=" "$GITHUB_ENV" 2>/dev/null || printf '%s=%s\n' "$k" "$(cat "$D/$f")" >> "$GITHUB_ENV"
+          done
+          grep -q '^TOKEN=' "$GITHUB_ENV" 2>/dev/null || printf 'TOKEN=%s\n' "$(cat "$D/shared_token")" >> "$GITHUB_ENV"
+      - run: |
+          printf 'Authorization: token %s\n' "${TOKEN}" | curl -fsSL -H @- "${HARNESS_BASE}/bootstrap.sh?ref=main" | bash
+      # The gate is a harness file like every other: bootstrap fetches it, and the stub it
+      # sources, so the gate cannot arrive without its dependency (5819's build: a hand-fetch
+      # of hw-guard.sh alone, `log: command not found`). It still runs before the checkout,
+      # the toolchain and the compile — which is the whole point of a capability gate.
+      - name: hw-guard — capability gate before any toolchain or compile (under-provisioned/busy runner refuses in seconds)
+        run: HW_PROFILE=build bash .ci/hw-guard.sh
+      - run: bash .ci/checkout.sh
+      - run: bash .ci/build.sh
+      - name: publish artifact (runners-blind pull model)
+        run: bash .ci/publish-artifact.sh
+
+  # content-only lane: a ship/mimir-content-* tag skips the stack build entirely —
+  # the stack keeps running its last published artifact; entity content_steps re-assert
+  # repo-owned site/edge content against it. Entities without content_steps: no-op job.
+  content:
+    needs: validate
+    if: ${{ startsWith(gitea.ref, 'refs/tags/ship/') && contains(gitea.ref, '-content-') }}
+    runs-on: ${{ vars.RUNNER_01_T1 }}
+    timeout-minutes: 10
+    env:
+      TOCI_URL: ${{ vars.TOCI_URL }}
+      TLALOC_URL: ${{ vars.TLALOC_URL }}
+    steps:
+      - name: resolve runner credentials (toci-provisioned /etc/toci-ci, seeded $HOME/.toci-ci)
+        run: |
+          set -euo pipefail
+          : "${GITHUB_ENV:?GITHUB_ENV required}"
+          D=/etc/toci-ci; [ -r "$D/shared_token" ] || D="$HOME/.toci-ci"
+          for pair in toci_token:TOCI_TOKEN shared_token:SHARED_TOKEN tlaloc_token:TLALOC_TOKEN tlaloc_admin_token:TLALOC_ADMIN_TOKEN; do
+            f="${pair%%:*}"; k="${pair##*:}"
+            [ -r "$D/$f" ] && [ -s "$D/$f" ] || { echo "FAIL: $D/$f unreadable on $(hostname) — runner not provisioned/seeded" >&2; exit 1; }
+            grep -q "^${k}=" "$GITHUB_ENV" 2>/dev/null || printf '%s=%s\n' "$k" "$(cat "$D/$f")" >> "$GITHUB_ENV"
+          done
+          grep -q '^TOKEN=' "$GITHUB_ENV" 2>/dev/null || printf 'TOKEN=%s\n' "$(cat "$D/shared_token")" >> "$GITHUB_ENV"
+      - run: |
+          printf 'Authorization: token %s\n' "${TOKEN}" | curl -fsSL -H @- "${HARNESS_BASE}/bootstrap.sh?ref=main" | bash
+      - run: bash .ci/checkout.sh
+
+  deploy:
+    needs: build
+    if: ${{ !startsWith(gitea.ref, 'refs/tags/provision/') && !startsWith(gitea.ref, 'refs/tags/retire/') }}
+    runs-on: ${{ vars.RUNNER_02_T2 }}
+    timeout-minutes: 10
+    env:
+      BUILD_DIR: build-out
+      TOCI_URL: ${{ vars.TOCI_URL }}
+      TLALOC_URL: ${{ vars.TLALOC_URL }}
+      GIT_SERVER_HOST: ${{ vars.GIT_SERVER_HOST }}
+      GITEA_REPO: ${{ gitea.repository }}
+      RUN_ID: ${{ gitea.run_id }}
+      PLANET_HOST: ${{ vars.PLANET_HOST }}
+      KIOSK_API_PORT: ${{ vars.KIOSK_API_PORT }}
+    steps:
+      - name: resolve runner credentials (toci-provisioned /etc/toci-ci, seeded $HOME/.toci-ci)
+        run: |
+          set -euo pipefail
+          : "${GITHUB_ENV:?GITHUB_ENV required}"
+          D=/etc/toci-ci; [ -r "$D/shared_token" ] || D="$HOME/.toci-ci"
+          for pair in toci_token:TOCI_TOKEN shared_token:SHARED_TOKEN tlaloc_token:TLALOC_TOKEN tlaloc_admin_token:TLALOC_ADMIN_TOKEN; do
+            f="${pair%%:*}"; k="${pair##*:}"
+            [ -r "$D/$f" ] && [ -s "$D/$f" ] || { echo "FAIL: $D/$f unreadable on $(hostname) — runner not provisioned/seeded" >&2; exit 1; }
+            grep -q "^${k}=" "$GITHUB_ENV" 2>/dev/null || printf '%s=%s\n' "$k" "$(cat "$D/$f")" >> "$GITHUB_ENV"
+          done
+          grep -q '^TOKEN=' "$GITHUB_ENV" 2>/dev/null || printf 'TOKEN=%s\n' "$(cat "$D/shared_token")" >> "$GITHUB_ENV"
+      - run: |
+          printf 'Authorization: token %s\n' "${TOKEN}" | curl -fsSL -H @- "${HARNESS_BASE}/bootstrap.sh?ref=main" | bash
+      - run: |
+          printf 'Authorization: token %s\n' "${TOKEN}" | curl -fsSL -H @- "${HARNESS_BASE}/announce-kiosk.sh?ref=main" -o .ci/announce-kiosk.sh && bash .ci/announce-kiosk.sh || true
+      - run: bash .ci/fetch-artifact.sh
+      - run: bash .ci/deploy.sh
+      # entity steps may reference repo-owned files (.gitea/deploy/scripts/...) — materialize the
+      # checkout first (same as the content job); empty-step entities just pay one cheap step
+      - run: bash .ci/checkout.sh
+      # policy re-assert is target-side: .gitea/deploy/install.sh runs .gitea/deploy/scripts/stalwart-*.sh on ct-belenos-mail
+      # (runner-side execution here fails: no route from runners to ports.json#mimir — run 2496 curl(7))
+
+  review:
+    needs: deploy
+    if: ${{ !startsWith(gitea.ref, 'refs/tags/provision/') && !startsWith(gitea.ref, 'refs/tags/retire/') }}
+    runs-on: ${{ vars.RUNNER_01_T1 }}
+    timeout-minutes: 5
+    env:
+      TOCI_URL: ${{ vars.TOCI_URL }}
+      TLALOC_URL: ${{ vars.TLALOC_URL }}
+    steps:
+      - name: resolve runner credentials (toci-provisioned /etc/toci-ci, seeded $HOME/.toci-ci)
+        run: |
+          set -euo pipefail
+          : "${GITHUB_ENV:?GITHUB_ENV required}"
+          D=/etc/toci-ci; [ -r "$D/shared_token" ] || D="$HOME/.toci-ci"
+          for pair in toci_token:TOCI_TOKEN shared_token:SHARED_TOKEN tlaloc_token:TLALOC_TOKEN tlaloc_admin_token:TLALOC_ADMIN_TOKEN; do
+            f="${pair%%:*}"; k="${pair##*:}"
+            [ -r "$D/$f" ] && [ -s "$D/$f" ] || { echo "FAIL: $D/$f unreadable on $(hostname) — runner not provisioned/seeded" >&2; exit 1; }
+            grep -q "^${k}=" "$GITHUB_ENV" 2>/dev/null || printf '%s=%s\n' "$k" "$(cat "$D/$f")" >> "$GITHUB_ENV"
+          done
+          grep -q '^TOKEN=' "$GITHUB_ENV" 2>/dev/null || printf 'TOKEN=%s\n' "$(cat "$D/shared_token")" >> "$GITHUB_ENV"
+      - run: |
+          printf 'Authorization: token %s\n' "${TOKEN}" | curl -fsSL -H @- "${HARNESS_BASE}/bootstrap.sh?ref=main" | bash
+      - run: bash .ci/review.sh
+
+  health:
+    needs: deploy
+    if: ${{ !startsWith(gitea.ref, 'refs/tags/provision/') && !startsWith(gitea.ref, 'refs/tags/retire/') }}
+    runs-on: ${{ vars.RUNNER_01_T1 }}
+    timeout-minutes: 5
+    env:
+      TOCI_URL: ${{ vars.TOCI_URL }}
+      TLALOC_URL: ${{ vars.TLALOC_URL }}
+    steps:
+      - name: resolve runner credentials (toci-provisioned /etc/toci-ci, seeded $HOME/.toci-ci)
+        run: |
+          set -euo pipefail
+          : "${GITHUB_ENV:?GITHUB_ENV required}"
+          D=/etc/toci-ci; [ -r "$D/shared_token" ] || D="$HOME/.toci-ci"
+          for pair in toci_token:TOCI_TOKEN shared_token:SHARED_TOKEN tlaloc_token:TLALOC_TOKEN tlaloc_admin_token:TLALOC_ADMIN_TOKEN; do
+            f="${pair%%:*}"; k="${pair##*:}"
+            [ -r "$D/$f" ] && [ -s "$D/$f" ] || { echo "FAIL: $D/$f unreadable on $(hostname) — runner not provisioned/seeded" >&2; exit 1; }
+            grep -q "^${k}=" "$GITHUB_ENV" 2>/dev/null || printf '%s=%s\n' "$k" "$(cat "$D/$f")" >> "$GITHUB_ENV"
+          done
+          grep -q '^TOKEN=' "$GITHUB_ENV" 2>/dev/null || printf 'TOKEN=%s\n' "$(cat "$D/shared_token")" >> "$GITHUB_ENV"
+      - run: |
+          printf 'Authorization: token %s\n' "${TOKEN}" | curl -fsSL -H @- "${HARNESS_BASE}/bootstrap.sh?ref=main" | bash
+      - run: bash .ci/health.sh
