@@ -50,7 +50,7 @@ jobs:
           echo "kiosk-health-remote ok"
   kiosk-e2e:
     needs: [validate]
-    runs-on: mjolnir
+    runs-on: ${{ vars.RUNNER_04_T2 }}
     timeout-minutes: 5
     steps:
       - name: local-kiosk
